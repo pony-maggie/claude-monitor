@@ -6,8 +6,6 @@ __pycache__/
 # Runtime
 .exporter.pid
 
-# Build artifacts
-dist/
 
 # IDE / Editor
 .idea/
