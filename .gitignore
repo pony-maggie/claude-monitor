@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Runtime
+.exporter.pid
+
+# Build artifacts
+dist/
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs (internal guides, not needed in repo)
+getting-started.md
+git-guide.md
+grafana-dashboard.md
+one-click.md
+research.md
+step.md
+
+# Claude Code local settings
+.claude/

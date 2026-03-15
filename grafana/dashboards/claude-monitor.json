@@ -1,0 +1,699 @@
+{
+  "uid": "claude-monitor",
+  "title": "Claude Code Monitor",
+  "tags": ["claude", "llm"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "project",
+        "type": "query",
+        "datasource": null,
+        "query": "label_values(claude_tokens_total, project)",
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 2
+      },
+      {
+        "name": "model",
+        "type": "query",
+        "datasource": null,
+        "query": "label_values(claude_tokens_total, model)",
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Cost & Tokens",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Total Cost",
+      "datasource": null,
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum(claude_cost_dollars_total{project=~\"$project\", model=~\"$model\"})",
+          "legendFormat": "total",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "color": { "mode": "value" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "red", "value": 50 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Cost Rate $/h",
+      "datasource": null,
+      "gridPos": { "h": 6, "w": 4, "x": 4, "y": 1 },
+      "targets": [
+        {
+          "expr": "3600 * sum(rate(claude_cost_dollars_total{project=~\"$project\", model=~\"$model\"}[5m]))",
+          "legendFormat": "$/h",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Token Rate by Type",
+      "datasource": null,
+      "gridPos": { "h": 6, "w": 4, "x": 8, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum by (token_type) (rate(claude_tokens_total{project=~\"$project\", model=~\"$model\"}[5m]))",
+          "legendFormat": "{{token_type}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        }
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Total Tokens by Type",
+      "datasource": null,
+      "gridPos": { "h": 6, "w": 4, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum by (token_type) (claude_tokens_total{project=~\"$project\", model=~\"$model\"})",
+          "legendFormat": "{{token_type}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Message Rate msg/h",
+      "datasource": null,
+      "gridPos": { "h": 6, "w": 4, "x": 16, "y": 1 },
+      "targets": [
+        {
+          "expr": "3600 * sum(rate(claude_messages_total{project=~\"$project\", model=~\"$model\"}[5m]))",
+          "legendFormat": "messages/h",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Cache Hit Ratio",
+      "datasource": null,
+      "gridPos": { "h": 6, "w": 4, "x": 20, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum(rate(claude_tokens_total{token_type=\"cache_read\", project=~\"$project\", model=~\"$model\"}[5m])) / (sum(rate(claude_tokens_total{token_type=\"cache_read\", project=~\"$project\", model=~\"$model\"}[5m])) + sum(rate(claude_tokens_total{token_type=~\"cache_write.*\", project=~\"$project\", model=~\"$model\"}[5m])) + sum(rate(claude_tokens_total{token_type=\"input\", project=~\"$project\", model=~\"$model\"}[5m])))",
+          "legendFormat": "cache hit ratio",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Tools & Performance",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "barchart",
+      "title": "Tool Calls Top 10",
+      "datasource": null,
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (tool) (claude_tool_use_total{project=~\"$project\"}))",
+          "legendFormat": "{{tool}}",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0
+      },
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": ["lastNotNull"]
+          }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Tool Call Rate",
+      "datasource": null,
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum by (tool) (rate(claude_tool_use_total{project=~\"$project\"}[5m]))",
+          "legendFormat": "{{tool}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Turn Avg Duration",
+      "datasource": null,
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(claude_turn_duration_seconds_sum{project=~\"$project\"}[5m])) / sum(rate(claude_turn_duration_seconds_count{project=~\"$project\"}[5m]))",
+          "legendFormat": "avg turn duration",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Turn P95 Duration",
+      "datasource": null,
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(claude_turn_duration_seconds_bucket{project=~\"$project\"}[5m])))",
+          "legendFormat": "p95 turn duration",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        }
+      }
+    },
+    {
+      "type": "heatmap",
+      "title": "Turn Duration Distribution",
+      "datasource": null,
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum by (le) (rate(claude_turn_duration_seconds_bucket{project=~\"$project\"}[5m]))",
+          "legendFormat": "{{le}}",
+          "refId": "A",
+          "format": "heatmap"
+        }
+      ],
+      "options": {
+        "yAxis": {
+          "unit": "s"
+        },
+        "color": {
+          "scheme": "Oranges"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "API Error Rate",
+      "datasource": null,
+      "gridPos": { "h": 8, "w": 4, "x": 8, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum by (project) (rate(claude_api_errors_total{project=~\"$project\"}[5m]))",
+          "legendFormat": "{{project}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Active Sessions",
+      "datasource": null,
+      "gridPos": { "h": 8, "w": 4, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum(claude_active_sessions{project=~\"$project\"})",
+          "legendFormat": "sessions",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "value" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 3 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Active Sessions by Project",
+      "datasource": null,
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+      "targets": [
+        {
+          "expr": "claude_active_sessions{project=~\"$project\"}",
+          "legendFormat": "{{project}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 3 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Context & Reasoning",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "type": "bargauge",
+      "title": "Content Blocks by Type",
+      "datasource": null,
+      "gridPos": { "h": 8, "w": 4, "x": 0, "y": 25 },
+      "targets": [
+        {
+          "expr": "sum by (block_type) (claude_content_blocks_total{project=~\"$project\"})",
+          "legendFormat": "{{block_type}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Content Block Rate",
+      "datasource": null,
+      "gridPos": { "h": 8, "w": 4, "x": 4, "y": 25 },
+      "targets": [
+        {
+          "expr": "sum by (block_type) (rate(claude_content_blocks_total{project=~\"$project\"}[5m]))",
+          "legendFormat": "{{block_type}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "stacking": { "mode": "normal" }
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Avg Output Tokens / Message",
+      "datasource": null,
+      "gridPos": { "h": 8, "w": 4, "x": 8, "y": 25 },
+      "targets": [
+        {
+          "expr": "sum(rate(claude_output_tokens_per_message_sum{project=~\"$project\", model=~\"$model\"}[5m])) / sum(rate(claude_output_tokens_per_message_count{project=~\"$project\", model=~\"$model\"}[5m]))",
+          "legendFormat": "avg output tokens",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Avg Context Size / Message",
+      "datasource": null,
+      "gridPos": { "h": 8, "w": 4, "x": 12, "y": 25 },
+      "targets": [
+        {
+          "expr": "sum(rate(claude_context_tokens_per_message_sum{project=~\"$project\", model=~\"$model\"}[5m])) / sum(rate(claude_context_tokens_per_message_count{project=~\"$project\", model=~\"$model\"}[5m]))",
+          "legendFormat": "avg context tokens",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Compactions",
+      "datasource": null,
+      "gridPos": { "h": 8, "w": 4, "x": 16, "y": 25 },
+      "targets": [
+        {
+          "expr": "sum(claude_compaction_total{project=~\"$project\"})",
+          "legendFormat": "compactions",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "value" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Pre-Compaction Context Size",
+      "datasource": null,
+      "gridPos": { "h": 8, "w": 4, "x": 20, "y": 25 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(claude_compaction_pretokens_bucket{project=~\"$project\"}[5m])))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(claude_compaction_pretokens_bucket{project=~\"$project\"}[5m])))",
+          "legendFormat": "p95",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Details",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 33 },
+      "collapsed": true,
+      "panels": [
+        {
+          "type": "timeseries",
+          "title": "Cost by Model $/h",
+          "datasource": null,
+          "gridPos": { "h": 8, "w": 6, "x": 0, "y": 34 },
+          "targets": [
+            {
+              "expr": "3600 * sum by (model) (rate(claude_cost_dollars_total{project=~\"$project\", model=~\"$model\"}[5m]))",
+              "legendFormat": "{{model}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD",
+              "custom": {
+                "fillOpacity": 10,
+                "lineWidth": 2
+              }
+            }
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Cost by Project $/h",
+          "datasource": null,
+          "gridPos": { "h": 8, "w": 6, "x": 6, "y": 34 },
+          "targets": [
+            {
+              "expr": "3600 * sum by (project) (rate(claude_cost_dollars_total{project=~\"$project\", model=~\"$model\"}[5m]))",
+              "legendFormat": "{{project}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD",
+              "custom": {
+                "fillOpacity": 10,
+                "lineWidth": 2
+              }
+            }
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Files Tracked",
+          "datasource": null,
+          "gridPos": { "h": 8, "w": 6, "x": 12, "y": 34 },
+          "targets": [
+            {
+              "expr": "claude_files_tracked",
+              "legendFormat": "files",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "color": { "mode": "value" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "blue", "value": null }
+                ]
+              }
+            }
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "reduceOptions": { "calcs": ["lastNotNull"] }
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Scan Duration",
+          "datasource": null,
+          "gridPos": { "h": 8, "w": 6, "x": 18, "y": 34 },
+          "targets": [
+            {
+              "expr": "claude_last_scan_seconds",
+              "legendFormat": "scan time",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "color": { "mode": "value" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 5 }
+                ]
+              }
+            }
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "reduceOptions": { "calcs": ["lastNotNull"] }
+          }
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true
+}
